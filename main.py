@@ -49,7 +49,7 @@ def main():
     clock = pygame.time.Clock()
 
     zoom_in = 0.9
-    zoom_out = 1.1
+    zoom_out = 1/zoom_in
     
 
     current_view = [2, 2]
@@ -75,6 +75,8 @@ def main():
     input_changed = False
     screen_changed = False
     screen_updated = False
+    screen_shift = [0.0, 0.0]
+    screen_center_shift = [0.0, 0.0]
 
     while loop:
         clock.tick(10)
@@ -95,27 +97,38 @@ def main():
                 if event.button == 4:
                     if p_mandelbrot.is_alive():
                         p_mandelbrot.kill()
+
+                    screen_shift[0] += int(plane.get_width()*(1-zoom_out))
+                    screen_shift[1] += int(plane.get_height()*(1-zoom_out))
+                    plane = pygame.transform.smoothscale(plane, (int(plane.get_width()*zoom_out), int(plane.get_height()*zoom_out)))
+                    input_changed = True
+                    screen_changed = True
+
                     # If you zoom in the center to be rendered shifts
+                    mouse_pos = pygame.mouse.get_pos()
+                    mouse_to_center_vec = mouse_pos_in_coord(mouse_pos, current_view)
+                    screen_center_shift[0] += int((W/2 - mouse_pos[0])*(1-zoom_in))
+                    screen_center_shift[1] += int((H/2 - mouse_pos[1])*(1-zoom_in))
+
                     current_view = [current_view[0]*zoom_in, current_view[1]*zoom_in]
-                    mouse_to_center_vec = mouse_pos_in_coord(pygame.mouse.get_pos(), current_view)
-                    center += mouse_to_center_vec/abs(mouse_to_center_vec) * (1-zoom_in)
                     center_shift += mouse_to_center_vec/abs(mouse_to_center_vec) * (1-zoom_in)
 
                     x = [(current_view[0]*2 * x / W - current_view[0]) for x in range(W)]
                     y = [(current_view[1] - current_view[1]*2 * y / W) for y in range(H)]
 
-                    input_changed = True
-                    screen_changed = True
-
                 if event.button == 5:
                     if p_mandelbrot.is_alive():
                         p_mandelbrot.kill()
+
+                    screen_shift[0] += int(plane.get_width()*(1-zoom_in))
+                    screen_shift[1] += int(plane.get_height()*(1-zoom_in))
+                    plane = pygame.transform.smoothscale(plane, (int(plane.get_width()*zoom_in), int(plane.get_height()*zoom_in)))
+                    input_changed = True
+                    screen_changed = True
+
                     current_view = [current_view[0]*zoom_out, current_view[1]*zoom_out]
                     x = [(current_view[0]*2 * x / W - current_view[0]) for x in range(W)]
                     y = [(current_view[1] - current_view[1]*2 * y / W) for y in range(H)]
-
-                    input_changed = True
-                    screen_changed = True
 
         if loop == False:
             break
@@ -127,22 +140,29 @@ def main():
             p_mandelbrot.start()
 
         if parent_conn.poll():
+            plane = pygame.Surface((W,H))
+            screen_updated = True
+            screen_changed = True
             for i, row in enumerate(parent_conn.recv()):
                 for j, val in enumerate(row):
                     plane.set_at((j, i), val)
-                    screen_updated = True
-                    screen_changed = True
 
 
         if screen_updated:
             screen_updated = False
             center += center_shift
             center_shift = 0
+            screen_shift = [0.0, 0.0]
+            screen_center_shift = [0.0, 0.0]
 
         if screen_changed:
             screen_changed = False
-            screen.blit(plane, (numpy.floor(current_view[0]*numpy.real(center_shift)/2 * W),
-                numpy.floor(current_view[1]*numpy.imag(center_shift)/2 * H)))
+            print(screen_shift)
+            screen.blit( 
+                    plane,
+                    (screen_center_shift[0]+(W-plane.get_width())//2,
+                    screen_center_shift[1]+(H-plane.get_height())//2)
+                    )
             pygame.display.flip()
 
     p_mandelbrot.join()
