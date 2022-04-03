@@ -9,7 +9,7 @@ from multiprocessing import Process, Pipe, Lock
 
 W = 1000
 H = 1000
-iterations = 20
+iterations = 50
 
 def cal_color(velocity, n):
     return ( numpy.floor(0xFF*(n/iterations)), numpy.floor(0xFF*(0.3*(1-velocity/32)+0.7*n/iterations)), 0xFF - numpy.floor(velocity*0xFF/32))
